@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Map</title>
+    <link rel="stylesheet" href="https://cdn.skypack.dev/ol/ol.css" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Pick Me Up & Pop Up</h1>
+    </header>
+    <main>
+      <div id="map" class="webpage"></div>
+      <div class="controls" id="controls">
+        <button id="toggle-view" class="btn">Switch to Fullscreen</button>
+        <button id="back-to-location" class="btn">Back to My Location</button>
+        <input type="text" id="search-location" class="search-input" placeholder="Search location...">
+        <button id="search-button" class="btn">Search</button>
+      </div>
+    </main>
+    <footer>
+      <p>&copy; 2024 Map Application. Powered by OpenLayers</p>
+    </footer>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

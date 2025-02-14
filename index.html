@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -7,22 +9,42 @@
     <link rel="stylesheet" href="https://cdn.skypack.dev/ol/ol.css" />
     <link rel="stylesheet" href="style.css" />
   </head>
+
   <body>
-    <header>
+
+    <header class="ui-element">
       <h1>Pick Me Up & Pop Up</h1>
     </header>
+
     <main>
-      <div id="map" class="webpage"></div>
-      <div class="controls" id="controls">
-        <button id="toggle-view" class="btn">Switch to Fullscreen</button>
+      <div id="map"></div>
+      <div class="controls ui-element">
+        <button id="set-source" class="btn">Show Layer</button>
+        <button id="unset-source" class="btn btn-danger">Hide Layer</button>
         <button id="back-to-location" class="btn">Back to My Location</button>
         <input type="text" id="search-location" class="search-input" placeholder="Search location...">
         <button id="search-button" class="btn">Search</button>
       </div>
+      
+      <!-- Tombol untuk toggle UI -->
+      <button id="toggle-ui" class="btn" style="position: absolute; top: 10px; right: 10px; z-index: 1000;">Hide UI</button>
     </main>
-    <footer>
-      <p>&copy;</p>
-    </footer>
+
     <script type="module" src="./main.js"></script>
+    <script >
+      const toggleButton = document.getElementById('toggle-ui');
+      let uiVisible = true;
+
+      toggleButton.addEventListener('click', () => {
+        const uiElements = document.querySelectorAll('.ui-element');
+        uiElements.forEach(el => {
+          el.style.display = uiVisible ? 'none' : 'block';
+        });
+        toggleButton.textContent = uiVisible ? 'Show UI' : 'Hide UI';
+        uiVisible = !uiVisible;
+      });
+    </script>
+
   </body>
 </html>
+

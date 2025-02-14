@@ -11,7 +11,6 @@ import VectorLayer from "https://cdn.skypack.dev/ol/layer/Vector.js";
 import { Style, Icon } from "https://cdn.skypack.dev/ol/style.js";
 import Swal from "https://cdn.skypack.dev/sweetalert2";
 
-
 // Langsung buat TileLayer dengan source OSM agar peta tampil dari awal
 const layer = new TileLayer({
   source: new OSM(),
@@ -25,35 +24,6 @@ const map = new Map({
     center: fromLonLat([107.57634352477324, -6.87436891415509]), // Center to Sarijadi, Bandung
     zoom: 16,
   }),
-});
-
-// Tombol hide/unhide UI
-const toggleUIBtn = document.createElement('button');
-toggleUIBtn.textContent = 'Hide UI';
-toggleUIBtn.style.position = 'absolute';
-toggleUIBtn.style.top = '10px';
-toggleUIBtn.style.right = '10px';
-toggleUIBtn.style.zIndex = '1200';
-toggleUIBtn.style.background = '#28a745';
-toggleUIBtn.style.color = 'white';
-toggleUIBtn.style.border = 'none';
-toggleUIBtn.style.padding = '10px 15px';
-toggleUIBtn.style.borderRadius = '5px';
-toggleUIBtn.style.cursor = 'pointer';
-document.body.appendChild(toggleUIBtn);
-
-let uiHidden = false;
-toggleUIBtn.addEventListener('click', () => {
-  const controls = document.getElementById('controls');
-  if (!uiHidden) {
-    controls.style.display = 'none';
-    toggleUIBtn.textContent = 'Show UI';
-    uiHidden = true;
-  } else {
-    controls.style.display = 'block';
-    toggleUIBtn.textContent = 'Hide UI';
-    uiHidden = false;
-  }
 });
 
 // Pop-up untuk informasi lokasi
@@ -74,11 +44,43 @@ const markerLayer = new VectorLayer({
 });
 map.addLayer(markerLayer);
 
-// Variabel untuk melacak status pop-up
-let popupVisible = true;
+// Variabel untuk menyimpan status layer
+let layerVisible = true;
 let userCoordinates = null;
 let userLongitude = null;
 let userLatitude = null;
+
+// Fungsi untuk menampilkan layer
+document.getElementById("set-source").onclick = function () {
+  layer.setSource(new OSM()); // Menampilkan kembali layer peta
+  map.addLayer(markerLayer); // Menampilkan kembali marker layer
+  overlay.setPosition(userCoordinates); // Menampilkan kembali pop-up
+
+  layerVisible = true;
+  Swal.fire({
+    title: "Layer Ditampilkan",
+    text: "Layer OpenStreetMap telah ditampilkan.",
+    icon: "success",
+    timer: 1500,
+    showConfirmButton: false,
+  });
+};
+
+// Fungsi untuk menyembunyikan layer, marker, dan pop-up
+document.getElementById("unset-source").onclick = function () {
+  layer.setSource(null); // Menyembunyikan peta
+  map.removeLayer(markerLayer); // Menyembunyikan marker layer
+  overlay.setPosition(undefined); // Menutup pop-up
+
+  layerVisible = false;
+  Swal.fire({
+    title: "Layer Disembunyikan",
+    text: "Layer OpenStreetMap dan markernya telah disembunyikan.",
+    icon: "info",
+    timer: 1500,
+    showConfirmButton: false,
+  });
+};
 
 // Ambil lokasi pengguna
 navigator.geolocation.getCurrentPosition(
@@ -87,7 +89,7 @@ navigator.geolocation.getCurrentPosition(
     userCoordinates = fromLonLat([longitude, latitude]);
     userLongitude = longitude;
     userLatitude = latitude;
-    
+
     map.getView().setCenter(userCoordinates);
     map.getView().setZoom(20);
 
@@ -114,11 +116,13 @@ navigator.geolocation.getCurrentPosition(
           <p><strong>Alamat:</strong> ${locationName}</p>
           <p><strong>Koordinat:</strong> ${longitude.toFixed(6)}, ${latitude.toFixed(6)}</p>
         `;
-        overlay.setPosition(userCoordinates);
+
+        if (layerVisible) {
+          overlay.setPosition(userCoordinates);
+        }
 
         popup.querySelector(".close-btn").addEventListener("click", () => {
           overlay.setPosition(undefined);
-          popupVisible = false;
         });
       })
       .catch(() => {
@@ -128,10 +132,13 @@ navigator.geolocation.getCurrentPosition(
           <p>Data lokasi tidak ditemukan.</p>
           <p><strong>Koordinat:</strong> ${longitude.toFixed(6)}, ${latitude.toFixed(6)}</p>
         `;
-        overlay.setPosition(userCoordinates);
+
+        if (layerVisible) {
+          overlay.setPosition(userCoordinates);
+        }
+
         popup.querySelector(".close-btn").addEventListener("click", () => {
           overlay.setPosition(undefined);
-          popupVisible = false;
         });
       });
   },
@@ -145,104 +152,82 @@ navigator.geolocation.getCurrentPosition(
 );
 
 // Event klik di peta untuk mendapatkan informasi lokasi
-map.on('click', function (event) {
-  const clickedCoordinates = event.coordinate;
-  const [longitude, latitude] = toLonLat(clickedCoordinates);
+map.on("click", function (event) {
+  if (!layerVisible) return; // Jangan tampilkan marker atau pop-up jika layer disembunyikan
 
-  markerSource.clear();
+  const clickedCoordinates = toLonLat(event.coordinate);
+  const [longitude, latitude] = clickedCoordinates;
+
+  markerSource.clear(); // Hapus semua marker lama
 
   const marker = new Feature({
-    geometry: new Point(clickedCoordinates)
+    geometry: new Point(event.coordinate),
   });
-  marker.setStyle(new Style({
-    image: new Icon({
-      src: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
-      scale: 0.05
+  marker.setStyle(
+    new Style({
+      image: new Icon({
+        src: "https://cdn-icons-png.flaticon.com/512/684/684908.png",
+        scale: 0.05,
+      }),
     })
-  }));
+  );
   markerSource.addFeature(marker);
 
-  const popupContent = `
-    <button class="close-btn">&times;</button>
-    <h3>Lokasi Anda</h3>
-    <p><strong>Alamat:</strong> Pusdiklat Pos, Jalan Kampus Polban, Ciwaruga, West Bandung, West Java, Java, 40515, Indonesia</p>
-    <p><strong>Koordinat:</strong> 107.575250, -6.873057</p>
-  `;
+  fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lon=${longitude}&lat=${latitude}`)
+    .then((response) => response.json())
+    .then((data) => {
+      const locationName = data.display_name || "Informasi lokasi tidak ditemukan";
 
-  popup.innerHTML = popupContent;
-  overlay.setPosition(clickedCoordinates);
+      popup.innerHTML = `
+        <button class="close-btn">&times;</button>
+        <h3>Informasi Lokasi</h3>
+        <p><strong>Alamat:</strong> ${locationName}</p>
+        <p><strong>Koordinat:</strong> ${longitude.toFixed(6)}, ${latitude.toFixed(6)}</p>
+      `;
 
-  const pinButton = popup.querySelector('.pin-btn');
-  pinButton.addEventListener('click', () => {
-    const marker = new Feature({
-      geometry: new Point(clickedCoordinates)
+      overlay.setPosition(event.coordinate);
+
+      popup.querySelector(".close-btn").addEventListener("click", () => {
+        overlay.setPosition(undefined);
+      });
+    })
+    .catch(() => {
+      popup.innerHTML = `
+        <button class="close-btn">&times;</button>
+        <h3>Informasi Lokasi</h3>
+        <p>Data lokasi tidak ditemukan.</p>
+        <p><strong>Koordinat:</strong> ${longitude.toFixed(6)}, ${latitude.toFixed(6)}</p>
+      `;
+
+      overlay.setPosition(event.coordinate);
+
+      popup.querySelector(".close-btn").addEventListener("click", () => {
+        overlay.setPosition(undefined);
+      });
     });
-    marker.setStyle(new Style({
-      image: new Icon({
-        src: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
-        scale: 0.05
-      })
-    }));
-    markerSource.addFeature(marker);
-  });
-
-  const closeButton = popup.querySelector('.close-btn');
-  closeButton.addEventListener('click', () => {
-    overlay.setPosition(undefined);
-  });
 });
 
-const backToLocationButton = document.getElementById("back-to-location");
-
+// Fungsi untuk kembali ke lokasi pengguna
 document.getElementById("back-to-location").onclick = function () {
   if (userCoordinates) {
     map.getView().setCenter(userCoordinates);
     map.getView().setZoom(20);
 
-    const marker = new Feature({
-      geometry: new Point(userCoordinates),
-    });
-    marker.setStyle(
-      new Style({
-        image: new Icon({
-          src: "https://cdn-icons-png.flaticon.com/512/684/684908.png",
-          scale: 0.05,
-        }),
-      })
-    );
-    markerSource.addFeature(marker);
-
-    if (userLongitude !== null && userLatitude !== null) {
-      fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lon=${userLongitude}&lat=${userLatitude}`)
-        .then((response) => response.json())
-        .then((data) => {
-          const locationName = data.display_name || "Tidak ada data lokasi";
-          popup.innerHTML = `
-          <button class="close-btn">&times;</button>
-          <h3>Lokasi Anda</h3>
-          <p>Data lokasi tidak ditemukan.</p>
-          <p><strong>Koordinat:</strong> ${longitude.toFixed(6)}, ${latitude.toFixed(6)}</p>
-          `;
-          overlay.setPosition(userCoordinates);
-
-          popup.querySelector(".close-btn").addEventListener("click", () => {
-            overlay.setPosition(undefined);
-            popupVisible = false;
-          });
+    if (layerVisible) {
+      const marker = new Feature({
+        geometry: new Point(userCoordinates),
+      });
+      marker.setStyle(
+        new Style({
+          image: new Icon({
+            src: "https://cdn-icons-png.flaticon.com/512/684/684908.png",
+            scale: 0.05,
+          }),
         })
-        .catch(() => {
-          popup.innerHTML = `
-            <button class="close-btn">&times;</button>
-            <h3>Lokasi Anda</h3>
-            <p>Data lokasi tidak ditemukan.</p>
-            <p><strong>Koordinat:</strong> ${userLongitude.toFixed(6)}, ${userLatitude.toFixed(6)}</p>
-          `;
-          overlay.setPosition(userCoordinates);
-          popup.querySelector(".close-btn").addEventListener("click", () => {
-            overlay.setPosition(undefined);
-            popupVisible = false;
-          });
-        });
+      );
+      markerSource.addFeature(marker);
+
+      overlay.setPosition(userCoordinates);
     }
   } else {
     Swal.fire({
@@ -253,27 +238,6 @@ document.getElementById("back-to-location").onclick = function () {
   }
 };
 
-const mapElement = document.getElementById('map');
-const toggleButton = document.getElementById('toggle-view');
-const controls = document.getElementById('controls');
-let isFullscreen = false;
-
-toggleButton.addEventListener('click', () => {
-  if (isFullscreen) {
-    mapElement.classList.remove('fullscreen');
-    mapElement.classList.add('webpage');
-    toggleButton.textContent = 'Switch to Fullscreen';
-  } else {
-    mapElement.classList.remove('webpage');
-    mapElement.classList.add('fullscreen');
-    toggleButton.textContent = 'Switch to Webpage';
-  }
-  isFullscreen = !isFullscreen;
-});
-
-controls.style.position = 'absolute';
-controls.style.zIndex = '1100';
-
 const searchInput = document.getElementById('search-location');
 const searchButton = document.getElementById('search-button');
 
@@ -282,19 +246,77 @@ searchButton.innerHTML = '<img src="https://cdn-icons-png.flaticon.com/512/622/6
 
 searchButton.addEventListener('click', () => {
   const query = searchInput.value;
-  if (query && !isFullscreen) {
+  if (query) {
     fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`)
       .then(response => response.json())
       .then(results => {
         if (results.length > 0) {
-          const { lon, lat } = results[0];
+          const { lon, lat, display_name } = results[0];
           const coordinates = fromLonLat([parseFloat(lon), parseFloat(lat)]);
+
+          // Pindahkan tampilan peta
           map.getView().setCenter(coordinates);
           map.getView().setZoom(15);
+
+          // Bersihkan marker lama
+          markerSource.clear();
+
+          // Tambahkan marker baru
+          const marker = new Feature({
+            geometry: new Point(coordinates),
+          });
+          marker.setStyle(
+            new Style({
+              image: new Icon({
+                src: "https://cdn-icons-png.flaticon.com/512/684/684908.png",
+                scale: 0.05,
+              }),
+            })
+          );
+          markerSource.addFeature(marker);
+
+          // Tampilkan popup dengan informasi lokasi
+          popup.innerHTML = `
+            <button class="close-btn">&times;</button>
+            <h3>Hasil Pencarian</h3>
+            <p><strong>Alamat:</strong> ${display_name}</p>
+            <p><strong>Koordinat:</strong> ${lon}, ${lat}</p>
+          `;
+          overlay.setPosition(coordinates);
+
+          // Event untuk menutup popup
+          popup.querySelector(".close-btn").addEventListener("click", () => {
+            overlay.setPosition(undefined);
+          });
         } else {
-          alert('Location not found');
+          Swal.fire({
+            title: "Lokasi Tidak Ditemukan",
+            text: `Lokasi "${query}" tidak ditemukan. Coba lagi dengan kata kunci lain.`,
+            icon: "warning",
+            timer: 2000,
+            showConfirmButton: false,
+          });
         }
       })
-      .catch(error => console.error('Error searching location:', error));
+      .catch(error => {
+        Swal.fire({
+          title: "Error",
+          text: "Terjadi kesalahan saat mencari lokasi.",
+          icon: "error",
+        });
+        console.error('Error searching location:', error);
+      });
+  } else {
+    Swal.fire({
+      title: "Input Kosong",
+      text: "Masukkan nama lokasi terlebih dahulu.",
+      icon: "info",
+      timer: 1500,
+      showConfirmButton: false,
+    });
   }
 });
+
+
+//ui
+

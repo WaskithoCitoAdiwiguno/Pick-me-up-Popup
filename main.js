@@ -149,18 +149,30 @@ map.on('click', function (event) {
   const clickedCoordinates = event.coordinate;
   const [longitude, latitude] = toLonLat(clickedCoordinates);
 
+  markerSource.clear();
+
+  const marker = new Feature({
+    geometry: new Point(clickedCoordinates)
+  });
+  marker.setStyle(new Style({
+    image: new Icon({
+      src: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
+      scale: 0.05
+    })
+  }));
+  markerSource.addFeature(marker);
+
   const popupContent = `
-    <button class="pin-btn">📍</button>
     <button class="close-btn">&times;</button>
-    <h3>Informasi Lokasi</h3>
-    <p><strong>Koordinat:</strong> ${longitude.toFixed(6)}, ${latitude.toFixed(6)}</p>
+    <h3>Lokasi Anda</h3>
+    <p><strong>Alamat:</strong> Pusdiklat Pos, Jalan Kampus Polban, Ciwaruga, West Bandung, West Java, Java, 40515, Indonesia</p>
+    <p><strong>Koordinat:</strong> 107.575250, -6.873057</p>
   `;
 
-  const popupElement = document.createElement('div');
-  popupElement.className = 'popup';
-  popupElement.innerHTML = popupContent;
+  popup.innerHTML = popupContent;
+  overlay.setPosition(clickedCoordinates);
 
-  const pinButton = popupElement.querySelector('.pin-btn');
+  const pinButton = popup.querySelector('.pin-btn');
   pinButton.addEventListener('click', () => {
     const marker = new Feature({
       geometry: new Point(clickedCoordinates)
@@ -172,21 +184,12 @@ map.on('click', function (event) {
       })
     }));
     markerSource.addFeature(marker);
-    popupElement.remove();
   });
 
-  const closeButton = popupElement.querySelector('.close-btn');
+  const closeButton = popup.querySelector('.close-btn');
   closeButton.addEventListener('click', () => {
-    map.removeOverlay(popupElement);
+    overlay.setPosition(undefined);
   });
-
-  const overlay = new Overlay({
-    element: popupElement,
-    position: clickedCoordinates,
-    positioning: 'bottom-center',
-    stopEvent: true
-  });
-  map.addOverlay(overlay);
 });
 
 const backToLocationButton = document.getElementById("back-to-location");
@@ -215,10 +218,10 @@ document.getElementById("back-to-location").onclick = function () {
         .then((data) => {
           const locationName = data.display_name || "Tidak ada data lokasi";
           popup.innerHTML = `
-            <button class="close-btn">&times;</button>
-            <h3>Lokasi Anda</h3>
-            <p><strong>Alamat:</strong> ${locationName}</p>
-            <p><strong>Koordinat:</strong> ${userLongitude.toFixed(6)}, ${userLatitude.toFixed(6)}</p>
+          <button class="close-btn">&times;</button>
+          <h3>Lokasi Anda</h3>
+          <p>Data lokasi tidak ditemukan.</p>
+          <p><strong>Koordinat:</strong> ${longitude.toFixed(6)}, ${latitude.toFixed(6)}</p>
           `;
           overlay.setPosition(userCoordinates);
 
